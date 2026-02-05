@@ -40,8 +40,13 @@ button{ padding:10px 12px; }
 {"version":6,"bangs":[{"keyword":"amazon","alias":"a","name":"Amazon.com","url":"https://www.amazon.com/s?k=%s"},{"name":"DuckDuckGo AI","keyword":"ai","url":"https://duckduckgo.com/?q=%s&ia=chat&bang=true","category":"ai"},{"keyword":"allrecipes","name":"allrecipes","url":"https://www.allrecipes.com/search?q=%s"},{"keyword":"allsides","name":"AllSides","url":"https://www.allsides.com/search/?q=%s"},{"keyword":"archive","name":"Archive.org","url":"https://archive.org/search?query=%s"},{"keyword":"bettycrocker","name":"Betty Crocker","url":"https://www.bettycrocker.com/search?term=%s"},{"keyword":"bing","url":"https://www.bing.com/search?q=%s"},{"keyword":"brave","url":"https://safe.search.brave.com/search?q=hi"},{"keyword":"dictionary","alias":"d","name":"The Free Dictionary","url":"https://www.thefreedictionary.com/%s","category":"dictionary"},{"keyword":"duckduckgo","alias":"ddg","name":"DuckDuckGo","url":"https://safe.duckduckgo.com/?q=%s","category":"search"},{"keyword":"ebay","alias":"e","url":"https://www.ebay.com/sch/i.html?_nkw=%s"},{"keyword":"ebrit","url":"https://www.britannica.com/search?query=%s","category":"encyclopedia"},{"keyword":"food","url":"https://www.food.com/search/%s","category":"food"},{"keyword":"google","alias":"g","url":"https://www.google.com/search?q=%s","category":"search"},{"keyword":"github","alias":"git","url":"https://github.com/search?q=%s"},{"keyword":"grok","url":"https://grok.com/?q=%s","category":"ai"},{"keyword":"grokipedia","url":"https://grokipedia.com/search?q=%s","category":"encyclopedia"},{"keyword":"homedepot","url":"https://www.homedepot.com/s/%s"},{"name":"DuckDuckGo images","keyword":"image","url":"https://safe.duckduckgo.com/?q=%s&ia=images&iax=images","category":"images"},{"name":"Brave images","keyword":"image","url":"https://safe.search.brave.com/images?q=%s","category":"images"},{"keyword":"libby","url":"https://libbyapp.com/library/reads/search/query-%s/page-1"},{"keyword":"makerworld","url":"https://makerworld.com/en/search/models?keyword=%s"},{"keyword":"maps","url":"https://www.google.com/maps/search/%s"},{"keyword":"perplexity","url":"https://www.perplexity.ai/?q=linux"},{"keyword":"pip","url":"https://pypi.org/search/?q=%s"},{"keyword":"printables","url":"https://www.printables.com/search/models?q=%d"},{"keyword":"python","url":"https://docs.python.org/3/search.html?q=%s"},{"keyword":"seriouseats","url":"https://www.seriouseats.com/search?q=%s"},{"keyword":"simplyrecipes","url":"https://www.simplyrecipes.com/search?q=%s"},{"keyword":"space","url":"https://www.space.com/search?searchTerm=%s"},{"keyword":"stackexchange","url":"https://stackexchange.com/search?q=%s"},{"keyword":"stackoverflow","alias":"so","url":"https://stackoverflow.com/search?q=%s"},{"keyword":"thesaurus","url":"https://www.thesaurus.com/browse/%s"},{"keyword":"thing","url":"https://www.thingiverse.com/search?q=%s"},{"keyword":"tubi","url":"https://tubitv.com/search/%s"},{"keyword":"ups","url":"https://www.ups.com/track?tracknum=%s"},{"keyword":"usps","url":"https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=%s"},{"keyword":"wolfram","alias":"wa","url":"https://www.wolframalpha.com/input/?i=%s","category":"calculate"},{"keyword":"youtube","alias":"yt","url":"https://www.youtube.com/results?search_query=%s","category":"videos"}]}
 </script>
 
+<script id="data-category-match-json" type="application/json">
+[["^(find) ",["search"]],["^(how many) ",["calculate"]],["^(what is a) ",["encyclopedia","ai"]],["^(what|when|why|where|do|how) ", ["ai"]],["\\b(recipe)\\b",["food"]],["^(\\S+)$",["dictionary","encyclopedia"]],["",["encyclopedia","ai","search"]]]
+</script>
+
 <script>
 const bangsJson = JSON.parse(document.getElementById('data-json').textContent);
+const categoryMatchesJson = JSON.parse(document.getElementById('data-category-match-json').textContent);
 
 function extractSiteName(url) {
   var name;
@@ -236,23 +241,12 @@ function handleRawSearch(raw) {
 }
 
 function renderSuggestions(rawQuery) {
-  const words = rawQuery.trim().split(/\s+/);
-  const oneWord = words.length === 1;
-
-  if (rawQuery.match(/^(find) /gi)) {
-    categories = [ 'search' ];
-  } else if (rawQuery.match(/^(how many) /gi)) {
-    categories = [ 'calculate' ];
-  } else if (rawQuery.match(/^(what is a) /gi)) {
-    categories = [ 'encyclopedia', 'ai' ];
-  } else if (rawQuery.match(/^(what|when|why|where|do|how) /gi) || rawQuery.endsWith('?')) {
-    categories = [ 'ai' ];
-  } else if (rawQuery.includes('recipe')) {
-    categories = [ 'food' ];
-  } else if (oneWord) {
-    categories = [ 'dictionary', 'encyclopedia' ];
-  } else {
-    categories = [ 'encyclopedia', 'ai', 'search' ];
+  let categories = [];
+  for(const c of categoryMatchesJson) {
+    if (new RegExp(c[0], 'i').exec(rawQuery)) {
+      categories = c[1];
+      break;
+    }
   }
   let entries = [];
   for (const c of categories) { entries.push(...bangs.filter(e => e.category == c)); }
