@@ -185,7 +185,6 @@ function positionPopup() {
 
 /* Replace the bang token in the input with the selected bang keyword (keeping rest) and redirect */
 function applyBangAtCursor(bang, done, final = false) {
-//  if (input.value.includes('!')) { return }
   // replace the last !token in the input with '!alias' and submit
   const val = input.value;
   const cursor = input.selectionStart;
@@ -224,12 +223,10 @@ function handleRawSearch(raw) {
   const first = parts[0].toLowerCase();
   let entry = null;
   let q = '';
-  if (first.startsWith('!')) {
-    const key = first.slice(1);
-    if (bangIndex[key]) {
-      entry = bangIndex[key];
-      q = parts.slice(1).join(' ');
-    }
+  if (m = raw.match(/(?<=^|\s)!([a-z]+)(?:$|\s+)/)) {
+    key = m[1];
+    q = raw.slice(0, m.index) + raw.slice(m.index + m[0].length);
+    entry = bangIndex[key];
   } else if (entry = bangs.find(b => b.name === first)) {
     q = parts.slice(1).join(' ');
   } else {
