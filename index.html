@@ -22,13 +22,13 @@ button{ padding:10px 12px; }
 <body>
 
 <h1>Simple Search</h1>
-<a href="?settings" title="Settings">⚙️</a>
 
 <div class="container">
   <form id="searchForm" onsubmit="return handleSearch(event);">
     <div class="search-row">
-      <input id="q" type="text" placeholder="Type a search or ! to see bangs (e.g. '!a headphones' or 'amazon headphones')"/>
+      <input name="search" id="q" type="text" placeholder="Type a search or ! to see bangs (e.g. '!a headphones' or 'amazon headphones')"/>
       <button type="submit">Go</button>
+      <a style="text-decoration: none; appearance: button; border: 1px; color: #7777;" href="?settings" title="Settings">☰</a>
     </div>
   </form>
 
