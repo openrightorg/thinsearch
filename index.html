@@ -112,12 +112,14 @@ function renderPopup(filter, exact=false, final=true) {
   let show_key = 'alias';
   if(typeof filter === 'string') {
     const f = filter.toLowerCase();
-    for (const key of [ 'alias', 'keyword', 'category' ]) {
-       filtered = exact ? bangs.filter(b => b[key] == f) : bangs.filter(b => b[key] && b[key].startsWith(f));
-       if (filtered.length) {
-         show_key = key;
-         break;
-       }
+    filtered = [];
+    for (const b of bangs) {
+      for (const key of [ 'alias', 'keyword', 'category' ]) {
+         if ( exact && b[key] == f || b[key] && b[key].startsWith(f)) {
+           filtered.push([b, b[key]]);
+           break;
+         }
+      }
     }
   } else {
     filtered = filter;
@@ -132,11 +134,11 @@ function renderPopup(filter, exact=false, final=true) {
     return;
   }
   highlightIndex = 0;
-  for (const [i, b] of filtered.entries()) {
+  for (const [i, e] of filtered.entries()) {
     const li = document.createElement('li');
     li.tabIndex = -1;
     li.dataset.index = i;
-    li.innerHTML = `<span><strong>!${typeof filter === 'string' ? b[show_key] : b.keyword}</strong></span><span style="opacity:.7">${b.name}</span>`;
+    li.innerHTML = `<span><strong>!${e[1]}</strong></span><span style="opacity:.7">${e[0].name}</span>`;
     li.addEventListener('click', () => { highlightIndex = i; if(updateHighlight(true, true) == false) { setTimeout(() => handleSearch()); }});
     popupList.appendChild(li);
   }
@@ -148,7 +150,7 @@ function updateHighlight(update, done = false) {
     li.classList.toggle('highlight', i === highlightIndex);
   });
   if(update && highlightIndex >= 0) {
-    return applyBangAtCursor(filtered[highlightIndex], done);
+    return applyBangAtCursor(filtered[highlightIndex][0], done);
   }
   return false;
 }
@@ -236,7 +238,7 @@ function handleRawSearch(raw) {
   }
 
   if (filtered.length > 1) {
-    entry = filtered[highlightIndex >= 0 && highlightIndex < filtered.length ? highlightIndex : 0];
+    entry = filtered[highlightIndex >= 0 && highlightIndex < filtered.length ? highlightIndex : 0][0];
   }
 
   if (entry) {
@@ -261,7 +263,7 @@ function renderSuggestions(rawQuery) {
     }
   }
   let entries = [];
-  for (const c of categories) { entries.push(...bangs.filter(e => e.category == c)); }
+  for (const c of categories) { entries.push([...bangs.filter(e => e.category == c), e.category]); }
   if (entries.length) {
     renderPopup(entries);
     showPopup();
