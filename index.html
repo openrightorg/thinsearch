@@ -371,20 +371,20 @@ function renderPopup(filtered) {
     li.tabIndex = -1;
     li.dataset.index = i;
     li.innerHTML = `<span><strong>${e[0].name}</strong></span><span style="opacity:.7">!${e[1]}</span>`;
-    li.addEventListener('click', () => { highlightIndex = i; if(updateHighlight(true, true) == false) { setTimeout(() => handleSearch()); }});
+    li.addEventListener('click', () => { highlightIndex = i; updateHighlight(true); setTimeout(() => handleSearch()); });
     popupList.appendChild(li);
   }
   updateHighlight(false);
   return true;
 }
 
-function updateHighlight(update, done = false) {
+function updateHighlight(update) {
   Array.from(popupList.children).forEach((li, i) => {
     li.classList.toggle('highlight', i === highlightIndex);
     if(i === highlightIndex) li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
   if(update && highlightIndex >= 0) {
-    return applyBangAtCursor(filtered[highlightIndex][0], done);
+    return applyBangAtCursor(filtered[highlightIndex][0]);
   }
   return false;
 }
@@ -439,7 +439,7 @@ function positionPopup() {
 }
 
 /* Replace the bang token in the input with the selected bang keyword (keeping rest) and redirect */
-function applyBangAtCursor(bang, done) {
+function applyBangAtCursor(bang) {
   // replace the last !token in the input with '!alias' and submit
   const val = input.value;
   const cursor = input.selectionStart;
@@ -452,10 +452,6 @@ function applyBangAtCursor(bang, done) {
   const prefix = before.slice(0, m.index + (m[1] ? 1 : 0)); // keep leading space if present
   const newVal = prefix + '!' + bang.alias + (after.startsWith(' ') ? after : (after ? ' ' + after : ''));
   input.value = newVal.trimStart();
-  if(done) {
-    input.value += ' ';
-    input.focus();
-  }
   return true;
 }
 
