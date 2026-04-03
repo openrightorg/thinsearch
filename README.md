@@ -10,6 +10,7 @@ Thin Search is a **single‑file, server‑less search UI** that lives in a sing
 - **Custom bangs** — users can edit, add, or delete bangs via the Settings page.  Bangs are stored in `localStorage`, so they persist across reloads and are private to each browser.
 - **Keyboard navigation** — use the arrow keys to cycle through suggestions, press `Enter` to apply the highlighted bang, or `Escape` to dismiss the popup.
 - **Offline‑ready** — all assets are embedded; no external requests are needed to run the page.
+- **Safe expression evaluation** - can locally evaluate math expressions and unit conversions.
 
 ## Usage
 
