@@ -389,7 +389,7 @@ function updateHighlight(update, done = false) {
   return false;
 }
 
-function processInput(value, cursor) {
+function processInput(value, cursor, exact = false) {
   if(null !== evaluate(value, true)) {
     r = evaluate(value);
     popupList.innerHTML = r;
@@ -400,10 +400,10 @@ function processInput(value, cursor) {
   const before = value.slice(0, cursor);
   let m;
   if ((m = /(?<=^|\s)(![\w-]*)( ?)/.exec(before))) {
-    renderPopup(filterWithString(m[1].slice(1).toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), m[2].length > 0));
+    renderPopup(filterWithString(m[1].slice(1).toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), exact || m[2].length > 0));
     showPopup();
     positionPopup();
-  } else if ((m = /^([\w]+)( ?)/.exec(before)) && renderPopup(filterWithString(m[1].toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), m[2].length > 0, ['keyword', 'category']))) {
+  } else if ((m = /^([\w]+)( ?)/.exec(before)) && renderPopup(filterWithString(m[1].toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), exact || m[2].length > 0, ['keyword', 'category']))) {
     showPopup();
     positionPopup();
   } else {
@@ -642,7 +642,7 @@ const query = new URLSearchParams(window.location.search);
 
 if (query.has('q')) {
   input.value = query.get('q');
-  processInput(input.value, input.value.length);
+  processInput(input.value, input.value.length, exact = true);
   input.focus();
   if (filtered.length == 1) { setTimeout(() => handleSearch()); }
 }
