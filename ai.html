@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bonsai WebGPU - Simplified</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --text: #f8fafc;
+            --primary: #38bdf8;
+            --accent: #818cf8;
+            --card-bg: #1e293b;
+            --border: #334155;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .status-container {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        #status-message {
+            color: var(--primary);
+            font-weight: bold;
+        }
+        .progress-bar {
+            height: 4px;
+            width: 100%;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+        #output {
+            min-height: 200px;
+            max-height: 500px;
+            overflow-y: auto;
+            background: #000;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            line-height: 1.6;
+        }
+        #output p { margin-top: 0; margin-bottom: 10px; }
+        #output code { background: #1e293b; padding: 2px 4px; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.9em; }
+        #output pre { background: #1e293b; padding: 15px; border-radius: 8px; overflow-x: auto; margin-bottom: 15px; }
+        #output pre code { background: transparent; padding: 0; }
+        #output table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
+        #output th, #output td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+        #output th { background: #1e293b; }
+        #output blockquote { border-left: 4px solid var(--primary); margin: 0 0 15px 0; padding-left: 15px; color: #94a3b8; }
+        #output h1, #output h2, #output h3 { margin-top: 0; margin-bottom: 10px; color: var(--primary); }
+        #output ul, #output ol { margin-top: 0; margin-bottom: 15px; padding-left: 25px; }
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        textarea {
+            flex-grow: 1;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            resize: none;
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            border-color: var(--primary);
+        }
+        button {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+        }
+        .info {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌳 Bonsai WebGPU</h1>
+            <p>1-bit LLM (Simplified Main Thread Version)</p>
+        </header>
+
+        <div class="status-container">
+            <div>Status: <span id="status-message">Ready</span></div>
+            <div id="progress-container" class="progress-bar">
+                <div id="progress-fill"></div>
+            </div>
+            <div id="stats" style="margin-top: 5px; font-size: 0.8rem; color: #94a3b8;"></div>
+        </div>
+
+        <div id="output">Click Submit or hit Enter to load the model and start chatting.</div>
+
+        <div class="input-group">
+            <textarea id="prompt-input" rows="2" placeholder="Type your prompt here... (Press Enter to send)"></textarea>
+            <button id="submit-btn">Submit</button>
+        </div>
+
+        <div class="info">
+            Powered by Transformers.js & WebGPU. Model weights are cached in your browser.
+        </div>
+    </div>
+
+    <script type="module">
+        import { pipeline, TextStreamer, DynamicCache, InterruptableStoppingCriteria, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.1.0";
+
+        // Markdown rendering logic from markdown-example.js
+        const escapeHtml = (value) => value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const renderInlineMarkdown = (value) => {
+            const codeParts = [];
+            let text = escapeHtml(value).replace(/`([^`]+)`/g, (_, code) => {
+                const token = `@@CODE${codeParts.length}@@`;
+                codeParts.push(`<code>${code}</code>`);
+                return token;
+            });
+            text = text
+                .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+                .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                .replace(/_([^_]+)_/g, '<em>$1</em>');
+            codeParts.forEach((html, index) => {
+                text = text.replace(`@@CODE${index}@@`, html);
+            });
+            return text;
+        };
+
+        const renderMarkdown = (content) => {
+            const lines = content.replace(/\r\n/g, '\n').split('\n');
+            const html = [];
+            let paragraph = [];
+            let listType = null;
+            let inCode = false;
+            let codeLines = [];
+            let tableRows = [];
+
+            const flushParagraph = () => {
+                if (paragraph.length) {
+                    html.push(`<p>${renderInlineMarkdown(paragraph.join(' '))}</p>`);
+                    paragraph = [];
+                }
+            };
+            const closeList = () => {
+                if (listType) {
+                    html.push(`</${listType}>`);
+                    listType = null;
+                }
+            };
+            const splitTableRow = (line) => line
+                .trim()
+                .replace(/^\|/, '')
+                .replace(/\|$/, '')
+                .split('|')
+                .map(cell => cell.trim());
+            const isTableDivider = (line) => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+            const flushTable = () => {
+                if (!tableRows.length) return;
+                const [header, divider, ...body] = tableRows;
+                if (!divider || !isTableDivider(divider)) {
+                    paragraph.push(...tableRows);
+                    tableRows = [];
+                    return;
+                }
+                const headerCells = splitTableRow(header)
+                    .map(cell => `<th>${renderInlineMarkdown(cell)}</th>`)
+                    .join('');
+                const bodyRows = body.map(row => {
+                    const cells = splitTableRow(row)
+                        .map(cell => `<td>${renderInlineMarkdown(cell)}</td>`)
+                        .join('');
+                    return `<tr>${cells}</tr>`;
+                }).join('');
+                html.push(`<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`);
+                tableRows = [];
+            };
+
+            for (const line of lines) {
+                if (line.startsWith('```')) {
+                    if (inCode) {
+                        html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+                        codeLines = [];
+                        inCode = false;
+                    } else {
+                        flushParagraph();
+                        closeList();
+                        flushTable();
+                        inCode = true;
+                    }
+                    continue;
+                }
+                if (inCode) {
+                    codeLines.push(line);
+                    continue;
+                }
+
+                if (!line.trim()) {
+                    flushParagraph();
+                    closeList();
+                    flushTable();
+                    continue;
+                }
+
+                if (line.includes('|')) {
+                    flushParagraph();
+                    closeList();
+                    tableRows.push(line);
+                    continue;
+                } else {
+                    flushTable();
+                }
+
+                if (/^\s*([-*_])\s*(\1\s*){2,}$/.test(line)) {
+                    flushParagraph();
+                    closeList();
+                    html.push('<hr>');
+                    continue;
+                }
+
+                const heading = line.match(/^(#{1,6})\s+(.+)$/);
+                if (heading) {
+                    flushParagraph();
+                    closeList();
+                    const level = heading[1].length;
+                    html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+                    continue;
+                }
+
+                const quote = line.match(/^>\s?(.+)$/);
+                if (quote) {
+                    flushParagraph();
+                    closeList();
+                    html.push(`<blockquote>${renderInlineMarkdown(quote[1])}</blockquote>`);
+                    continue;
+                }
+
+                const ordered = line.match(/^\s*\d+\.\s+(.+)$/);
+                const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
+                if (ordered || unordered) {
+                    flushParagraph();
+                    const nextType = ordered ? 'ol' : 'ul';
+                    if (listType !== nextType) {
+                        closeList();
+                        listType = nextType;
+                        html.push(`<${listType}>`);
+                    }
+                    html.push(`<li>${renderInlineMarkdown((ordered || unordered)[1])}</li>`);
+                    continue;
+                }
+
+                closeList();
+                paragraph.push(line.trim());
+            }
+
+            if (inCode) html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+            flushTable();
+            flushParagraph();
+            closeList();
+            return html.join('');
+        };
+
+        const MODEL_ID = "onnx-community/Bonsai-1.7B-ONNX";
+
+        let generator = null;
+        let messages = [];
+        const cache = new DynamicCache();
+        const stopping_criteria = new InterruptableStoppingCriteria();
+
+        const statusMessage = document.getElementById('status-message');
+        const progressContainer = document.getElementById('progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        const outputDiv = document.getElementById('output');
+        const promptInput = document.getElementById('prompt-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const statsDiv = document.getElementById('stats');
+
+        // Check WebGPU
+        if (!navigator.gpu) {
+            statusMessage.textContent = 'Error: WebGPU Not Supported';
+            statusMessage.style.color = '#ef4444';
+            outputDiv.textContent = 'WebGPU is not available in your browser.';
+            submitBtn.disabled = true;
+        }
+
+        // Handle Query Param
+        const qParam = new URLSearchParams(window.location.search).get('q');
+        if (qParam) promptInput.value = qParam;
+
+        // Focus input on load
+        promptInput.focus();
+
+        function appendToOutput(role, content) {
+            if (outputDiv.textContent.startsWith('Click Submit') || outputDiv.textContent.startsWith('Loading model')) {
+                outputDiv.textContent = '';
+            }
+
+            const msgDiv = document.createElement('div');
+            msgDiv.style.marginBottom = '20px';
+            msgDiv.style.borderBottom = '1px solid #334155';
+            msgDiv.style.paddingBottom = '15px';
+
+            const roleSpan = document.createElement('span');
+            roleSpan.textContent = role === 'user' ? 'You: ' : 'Bonsai: ';
+            roleSpan.style.color = role === 'user' ? 'var(--primary)' : 'var(--accent)';
+            roleSpan.style.fontWeight = 'bold';
+            roleSpan.style.display = 'block';
+            roleSpan.style.marginBottom = '5px';
+
+            const contentDiv = document.createElement('div');
+            if (role === 'assistant') {
+                contentDiv.id = 'current-assistant-msg';
+                contentDiv.dataset.raw = content;
+                contentDiv.innerHTML = renderMarkdown(content);
+            } else {
+                contentDiv.textContent = content;
+            }
+
+            msgDiv.appendChild(roleSpan);
+            msgDiv.appendChild(contentDiv);
+            outputDiv.appendChild(msgDiv);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        async function loadModel() {
+            statusMessage.textContent = 'Fetching weights...';
+            progressContainer.style.display = 'block';
+
+            env.useBrowserCache = true;
+            env.allowLocalModels = false;
+
+            try {
+                generator = await pipeline("text-generation", MODEL_ID, {
+                    device: "webgpu",
+                    dtype: "q1",
+                    progress_callback: (info) => {
+                        if (info.status === 'progress') {
+                            progressFill.style.width = `${info.progress}%`;
+                            statusMessage.textContent = `Loading: ${Math.round(info.progress)}%`;
+                        }
+                    }
+                });
+
+                statusMessage.textContent = 'Warming up...';
+                await generator("a", { max_new_tokens: 1 });
+
+                statusMessage.textContent = 'Ready';
+                progressContainer.style.display = 'none';
+            } catch (err) {
+                statusMessage.textContent = 'Error';
+                outputDiv.textContent = 'Error loading model: ' + err.message;
+                throw err;
+            }
+        }
+
+        async function handleSubmit() {
+            const text = promptInput.value.trim();
+            if (!text || submitBtn.disabled) return;
+            submitBtn.disabled = true;
+
+            try {
+                if (!generator) {
+                    outputDiv.textContent = 'Loading model... (this may take a minute on first run)';
+                    await loadModel();
+                }
+
+                messages.push({ role: 'user', content: text });
+                appendToOutput('user', text);
+                appendToOutput('assistant', '');
+
+                const currentMsg = document.getElementById('current-assistant-msg');
+                let startTime;
+                let numTokens = 0;
+
+                const streamer = new TextStreamer(generator.tokenizer, {
+                    skip_prompt: true,
+                    callback_function: (t) => {
+                        currentMsg.dataset.raw += t;
+                        currentMsg.innerHTML = renderMarkdown(currentMsg.dataset.raw);
+                        outputDiv.scrollTop = outputDiv.scrollHeight;
+
+                        // Performance tracking
+                        startTime ??= performance.now();
+                        numTokens++;
+                        const tps = (numTokens / (performance.now() - startTime)) * 1000;
+                        statsDiv.textContent = `${tps.toFixed(2)} tokens/sec`;
+                    }
+                });
+
+                statusMessage.textContent = 'Generating...';
+                await generator(messages, {
+                    max_new_tokens: 1024,
+                    streamer,
+                    stopping_criteria,
+                    past_key_values: cache
+                });
+
+                messages.push({ role: 'assistant', content: currentMsg.dataset.raw });
+                currentMsg.id = ''; // Finalize turn
+                statusMessage.textContent = 'Ready';
+                promptInput.value = '';
+                promptInput.focus();
+
+            } catch (err) {
+                statusMessage.textContent = 'Error';
+                outputDiv.textContent += '\nError during generation: ' + err.message;
+                console.error(err);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        submitBtn.onclick = handleSubmit;
+        promptInput.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+            }
+        };
+    </script>
+</body>
+</html>
