@@ -148,7 +148,13 @@
         </header>
 
         <div class="status-container">
-            <div>Status: <span id="status-message">Ready</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div>Status: <span id="status-message">Ready</span></div>
+                <select id="model-select" style="background: #1e293b; color: white; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer;">
+                    <option value="onnx-community/Bonsai-1.7B-ONNX">Bonsai 1.7B (290 MB)</option>
+                    <option value="onnx-community/Bonsai-4B-ONNX">Bonsai 4B (584 MB)</option>
+                </select>
+            </div>
             <div id="progress-container" class="progress-bar">
                 <div id="progress-fill"></div>
             </div>
@@ -331,11 +337,11 @@
             return html.join('');
         };
 
-        const MODEL_ID = "onnx-community/Bonsai-1.7B-ONNX";
+        let MODEL_ID = "onnx-community/Bonsai-1.7B-ONNX";
 
         let generator = null;
         let messages = [];
-        const cache = new DynamicCache();
+        let cache = new DynamicCache();
         const stopping_criteria = new InterruptableStoppingCriteria();
 
         const statusMessage = document.getElementById('status-message');
@@ -345,6 +351,7 @@
         const promptInput = document.getElementById('prompt-input');
         const submitBtn = document.getElementById('submit-btn');
         const statsDiv = document.getElementById('stats');
+        const modelSelect = document.getElementById('model-select');
 
         // Check WebGPU
         if (!navigator.gpu) {
@@ -353,6 +360,18 @@
             outputDiv.textContent = 'WebGPU is not available in your browser.';
             submitBtn.disabled = true;
         }
+
+        // Handle model change
+        modelSelect.onchange = (e) => {
+            if (MODEL_ID !== e.target.value) {
+                MODEL_ID = e.target.value;
+                generator = null; // Force reload
+                messages = []; // Clear history for new model
+                cache = new DynamicCache();
+                outputDiv.textContent = `Model changed to ${modelSelect.options[modelSelect.selectedIndex].text}. Click Submit to load and start chatting.`;
+                statusMessage.textContent = 'Ready';
+            }
+        };
 
         // Handle Query Param
         const qParam = new URLSearchParams(window.location.search).get('q');
