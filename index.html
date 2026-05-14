@@ -426,7 +426,9 @@ function processInput(value, cursor, exact = false) {
     renderPopup(filterWithString(m[1].slice(1).toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), exact || m[2].length > 0));
     showPopup();
     positionPopup();
-  } else if ((m = /^([\w]+)( ?)/.exec(before)) && renderPopup(filterWithString(m[1].toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), exact || m[2].length > 0, ['keyword', 'category']))) {
+  } else if ((m = /^([\w]+)( ?)/.exec(value)) && renderPopup(filterWithString(m[1].toLowerCase(), value.slice(m.index + m[0].length + m[2].length), exact || m[2].length > 0, ['keyword', 'category'])) ||
+             (m = /(?: )([\w]+)$/.exec(value)) && renderPopup(filterWithString(m[1].toLowerCase(), value.slice(0, m.index), exact, ['keyword', 'category']))
+  ) {
     showPopup();
     positionPopup();
   } else {
