@@ -113,7 +113,7 @@ function canonicalUnit(u) {
 
 function tryConvert(input, check = false) {
   const m = input.trim().toLowerCase()
-    .match(/^([+-]?(?:\d+\.?\d*|\.\d+))\s*([a-z]+)\s*(to|in)\s*([a-z]+)$/i);
+    .match(/^([+-]?(?:\d+\.?\d*|\.\d+|\d+\/\d+))\s*([a-z]+)\s*(to|in)\s*([a-z]+)$/i);
   if (!m) return null;
 
   const valueStr = m[1];
@@ -123,7 +123,7 @@ function tryConvert(input, check = false) {
   if (!units[unitFrom] || !units[unitTo]) return null;
   if (units[unitFrom].type !== units[unitTo].type) return null;
 
-  const value = Number(valueStr);
+  const value = valueStr.includes('/') ? evaluate_fraction(valueStr) : Number(valueStr);
   if (!Number.isFinite(value)) return Infinity;
 
   if (check) return {};
@@ -247,6 +247,15 @@ function evalRPN(rpn) {
   return stack[0];
 }
 
+function evaluate_fraction(input, check = false) {
+  const tokens = tokenize(input);
+  if (!tokens) return null;
+  const rpn = toRPN(tokens);
+  if (!rpn) return null;
+  if (check) return '';
+  return evalRPN(rpn);
+}
+
 function evaluate(input, check = false) {
   if(!input || input.length == 0) return null;
   const conv = tryConvert(input, check);
@@ -269,7 +278,7 @@ function evaluate(input, check = false) {
 </script>
 
 <script id="data-json" type="application/json">
-{"version":6,"bangs":[{"keyword":"amazon","alias":"a","name":"Amazon.com","url":"https://www.amazon.com/s?k=%s"},{"name":"DuckDuckGo AI","keyword":"ai","url":"https://duckduckgo.com/?q=%s&ia=chat&bang=true","category":"ai"},{"keyword":"allrecipes","name":"allrecipes","url":"https://www.allrecipes.com/search?q=%s","category":"food"},{"keyword":"allsides","name":"AllSides","url":"https://www.allsides.com/search/?q=%s"},{"keyword":"archive","name":"Archive.org","url":"https://archive.org/search?query=%s"},{"keyword":"bettycrocker","name":"Betty Crocker","url":"https://www.bettycrocker.com/search?term=%s","category":"food"},{"keyword":"bing","url":"https://www.bing.com/search?q=%s"},{"keyword":"brave","url":"https://safe.search.brave.com/search?q=hi"},{"keyword":"dictionary","alias":"d","name":"The Free Dictionary","url":"https://www.thefreedictionary.com/%s","category":"dictionary"},{"keyword":"duckduckgo","alias":"ddg","name":"DuckDuckGo","url":"https://safe.duckduckgo.com/?q=%s","category":"search"},{"keyword":"ebay","alias":"e","url":"https://www.ebay.com/sch/i.html?_nkw=%s"},{"keyword":"ebrit","url":"https://www.britannica.com/search?query=%s","category":"encyclopedia"},{"keyword":"food","url":"https://www.food.com/search/%s","category":"food"},{"keyword":"google","alias":"g","url":"https://www.google.com/search?q=%s","category":"search"},{"keyword":"github","alias":"git","url":"https://github.com/search?q=%s"},{"keyword":"gemini","url":"https://www.google.com/search?udm=50&q=%s","category":"ai"},{"name":"ChatGPT","keyword":"chatgpt","url":"https://chatgpt.com/?q=%s","category":"ai"},{"keyword":"grok","url":"https://grok.com/?q=%s","category":"ai"},{"keyword":"grokipedia","url":"https://grokipedia.com/search?q=%s","category":"encyclopedia"},{"keyword":"wikipedia","alias":"w","url":"https://en.wikipedia.org/wiki/Special:Search?search=%s","category":"encyclopedia"},{"keyword":"homedepot","url":"https://www.homedepot.com/s/%s"},{"name":"DuckDuckGo images","keyword":"image","url":"https://safe.duckduckgo.com/?q=%s&ia=images&iax=images","category":"images"},{"name":"Brave images","keyword":"image","url":"https://safe.search.brave.com/images?q=%s","category":"images"},{"keyword":"libby","url":"https://libbyapp.com/library/reads/search/query-%s/page-1"},{"keyword":"makerworld","url":"https://makerworld.com/en/search/models?keyword=%s"},{"name":"Google Maps","url":"https://google.com/maps?q=%s","category":"maps"},{"name":"Bing Maps","url":"https://bing.com/maps?q=%s","category":"maps"},{"name":"Apple Maps","url":"https://maps.apple.com/?q=%s","category":"maps"},{"keyword":"perplexity","url":"https://www.perplexity.ai/?q=linux"},{"keyword":"pip","url":"https://pypi.org/search/?q=%s"},{"keyword":"printables","url":"https://www.printables.com/search/models?q=%d"},{"name":"GeeksForGeeks (python)","keyword":"python","url":"https://www.geeksforgeeks.org/search/?gq=python+%s"},{"name":"GeeksForGeeks (javascript)","keyword":"javascript","url":"https://www.geeksforgeeks.org/search/?gq=javascript+%s"},{"name":"GeeksForGeeks (typescript)","keyword":"typescript","url":"https://www.geeksforgeeks.org/search/?gq=typescript+%s"},{"keyword":"seriouseats","url":"https://www.seriouseats.com/search?q=%s"},{"keyword":"simplyrecipes","url":"https://www.simplyrecipes.com/search?q=%s"},{"keyword":"space","url":"https://www.space.com/search?searchTerm=%s"},{"keyword":"stackexchange","url":"https://stackexchange.com/search?q=%s"},{"keyword":"stackoverflow","alias":"so","url":"https://stackoverflow.com/search?q=%s"},{"keyword":"thesaurus","url":"https://www.thesaurus.com/browse/%s"},{"keyword":"thing","url":"https://www.thingiverse.com/search?q=%s"},{"keyword":"tubi","url":"https://tubitv.com/search/%s"},{"keyword":"ups","url":"https://www.ups.com/track?tracknum=%s"},{"keyword":"usps","url":"https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=%s"},{"keyword":"wolfram","alias":"wa","url":"https://www.wolframalpha.com/input/?i=%s","category":"calculate"},{"keyword":"youtube","alias":"yt","url":"https://www.youtube.com/results?search_query=%s","category":"videos"},{"keyword":"huggingface","alias":"hf","url":"https://huggingface.co/search/full-text?q=%s"},{"keyword":"thinai","name":"Thin AI (experimental)","url":"ai.html?q=%s","category":"ai"},{"keyword":"localai","name":"Local AI","url":"http://localhost:8080/?q=%s","category":"ai"}]}
+{"version":6,"bangs":[{"keyword":"amazon","alias":"a","name":"Amazon.com","url":"https://www.amazon.com/s?k=%s"},{"name":"DuckDuckGo AI","keyword":"ai","url":"https://duckduckgo.com/?q=%s&ia=chat&bang=true","category":"ai"},{"keyword":"allrecipes","name":"allrecipes","url":"https://www.allrecipes.com/search?q=%s","category":"food"},{"keyword":"allsides","name":"AllSides","url":"https://www.allsides.com/search/?q=%s"},{"keyword":"archive","name":"Archive.org","url":"https://archive.org/search?query=%s"},{"keyword":"bettycrocker","name":"Betty Crocker","url":"https://www.bettycrocker.com/search?term=%s","category":"food"},{"keyword":"bing","url":"https://www.bing.com/search?q=%s"},{"keyword":"brave","url":"https://safe.search.brave.com/search?q=hi"},{"keyword":"dictionary","alias":"d","name":"The Free Dictionary","url":"https://www.thefreedictionary.com/%s","category":"dictionary"},{"keyword":"duckduckgo","alias":"ddg","name":"DuckDuckGo","url":"https://safe.duckduckgo.com/?q=%s","category":"search"},{"keyword":"ebay","alias":"e","url":"https://www.ebay.com/sch/i.html?_nkw=%s"},{"keyword":"ebrit","url":"https://www.britannica.com/search?query=%s","category":"encyclopedia"},{"keyword":"food","url":"https://www.food.com/search/%s","category":"food"},{"keyword":"google","alias":"g","url":"https://www.google.com/search?q=%s","category":"search"},{"keyword":"github","alias":"git","url":"https://github.com/search?q=%s"},{"keyword":"gemini","url":"https://www.google.com/search?udm=50&q=%s","category":"ai"},{"name":"ChatGPT","keyword":"chatgpt","url":"https://chatgpt.com/?q=%s","category":"ai"},{"keyword":"grok","url":"https://grok.com/?q=%s","category":"ai"},{"keyword":"grokipedia","url":"https://grokipedia.com/search?q=%s","category":"encyclopedia"},{"keyword":"wikipedia","alias":"w","url":"https://en.wikipedia.org/wiki/Special:Search?search=%s","category":"encyclopedia"},{"keyword":"homedepot","url":"https://www.homedepot.com/s/%s"},{"name":"DuckDuckGo images","keyword":"image","url":"https://safe.duckduckgo.com/?q=%s&ia=images&iax=images","category":"images"},{"name":"Brave images","keyword":"image","url":"https://safe.search.brave.com/images?q=%s","category":"images"},{"keyword":"libby","url":"https://libbyapp.com/library/reads/search/query-%s/page-1"},{"keyword":"makerworld","url":"https://makerworld.com/en/search/models?keyword=%s"},{"name":"Google Maps","url":"https://google.com/maps?q=%s","category":"maps"},{"name":"Bing Maps","url":"https://bing.com/maps?q=%s","category":"maps"},{"name":"Apple Maps","url":"https://maps.apple.com/?q=%s","category":"maps"},{"keyword":"perplexity","url":"https://www.perplexity.ai/?q=linux"},{"keyword":"pip","url":"https://pypi.org/search/?q=%s"},{"keyword":"printables","url":"https://www.printables.com/search/models?q=%d"},{"name":"GeeksForGeeks (python)","keyword":"python","url":"https://www.geeksforgeeks.org/search/?gq=python+%s"},{"name":"GeeksForGeeks (javascript)","keyword":"javascript","url":"https://www.geeksforgeeks.org/search/?gq=javascript+%s"},{"name":"GeeksForGeeks (typescript)","keyword":"typescript","url":"https://www.geeksforgeeks.org/search/?gq=typescript+%s"},{"keyword":"seriouseats","url":"https://www.seriouseats.com/search?q=%s"},{"keyword":"simplyrecipes","url":"https://www.simplyrecipes.com/search?q=%s"},{"keyword":"space","url":"https://www.space.com/search?searchTerm=%s"},{"keyword":"stackexchange","url":"https://stackexchange.com/search?q=%s"},{"keyword":"stackoverflow","alias":"so","url":"https://stackoverflow.com/search?q=%s"},{"keyword":"thesaurus","url":"https://www.thesaurus.com/browse/%s"},{"keyword":"thing","url":"https://www.thingiverse.com/search?q=%s"},{"keyword":"tubi","url":"https://tubitv.com/search/%s"},{"keyword":"ups","url":"https://www.ups.com/track?tracknum=%s"},{"keyword":"usps","url":"https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=%s"},{"keyword":"wolfram","alias":"wa","url":"https://www.wolframalpha.com/input/?i=%s","category":"calculate"},{"keyword":"youtube","alias":"yt","url":"https://www.youtube.com/results?search_query=%s","category":"videos"},{"keyword":"huggingface","alias":"hf","url":"https://huggingface.co/models?search=%s"},{"keyword":"thinai","name":"Thin AI (experimental)","url":"ai.html?q=%s","category":"ai"},{"keyword":"localai","name":"Local AI","url":"http://localhost:8080/?q=%s","category":"ai"}]}
 </script>
 
 <script id="data-category-match-json" type="application/json">
@@ -285,13 +294,23 @@ if (storedBangJson) {
   try {
     const userBangs = JSON.parse(storedBangJson);
     if (Array.isArray(userBangs)) {
-      bangsJson.bangs.update(userBangs);
+      bangsJson.bangs = mergeOverrides(bangsJson.bangs, userBangs);
     }
   } catch (e) {
     console.warn('Failed to parse stored bangs', e);
   }
 }
 const categoryMatchesJson = JSON.parse(document.getElementById('data-category-match-json').textContent);
+
+function mergeOverrides(A = [], B = []) {
+  const key = i => `${i.name ?? ''}|${i.keyword ?? ''}`;
+  const map = new Map();
+
+  for (const it of A) map.set(key(it), { ...it });
+  for (const it of B) map.set(key(it), { ...it });
+
+  return Array.from(map.values());
+}
 
 function capitalizeName(name) {
   return (name && String(name[0]).toUpperCase() + String(name).slice(1).toLowerCase()) || "";
