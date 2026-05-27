@@ -113,7 +113,7 @@ function canonicalUnit(u) {
 
 function tryConvert(input, check = false) {
   const m = input.trim().toLowerCase()
-    .match(/^([+-]?(?:\d+\.?\d*|\.\d+|\d+\/\d+))\s*([a-z]+)\s*(to|in)\s*([a-z]+)$/i);
+    .match(/^([+-]?(?:\d+\.?\d*|\.\d+|\d+ +\d+\/\d+|\d+\/\d+))\s*([a-z]+)\s*(to|in)\s*([a-z]+)$/i);
   if (!m) return null;
 
   const valueStr = m[1];
@@ -123,7 +123,7 @@ function tryConvert(input, check = false) {
   if (!units[unitFrom] || !units[unitTo]) return null;
   if (units[unitFrom].type !== units[unitTo].type) return null;
 
-  const value = valueStr.includes('/') ? evaluate_fraction(valueStr) : Number(valueStr);
+  const value = valueStr.includes('/') ? evaluate(valueStr) : Number(valueStr);
   if (!Number.isFinite(value)) return Infinity;
 
   if (check) return {};
@@ -163,6 +163,8 @@ function insertImplicitMultiplication(tokens) {
         out.push("*");
       } else if (prev === ")" && currIsNum) {
         out.push("*");
+      } else if (prevIsNum && currIsNum) {
+        out.push("+");
       }
     }
     out.push(t);
@@ -247,16 +249,18 @@ function evalRPN(rpn) {
   return stack[0];
 }
 
-function evaluate_fraction(input, check = false) {
-  const tokens = tokenize(input);
-  if (!tokens) return null;
+function evaluate(input, check = false) {
+  const tokensRaw = tokenize(input);
+  if (!tokensRaw) return null;
+  const tokens = insertImplicitMultiplication(tokensRaw);
   const rpn = toRPN(tokens);
   if (!rpn) return null;
   if (check) return '';
-  return evalRPN(rpn);
+  const value = evalRPN(rpn);
+  return value;
 }
 
-function evaluate(input, check = false) {
+function evaluate_conversion(input, check = false) {
   if(!input || input.length == 0) return null;
   const conv = tryConvert(input, check);
   if (conv) {
@@ -265,14 +269,7 @@ function evaluate(input, check = false) {
     return `${conv.value} ${conv.unit}`;
   }
 
-  const tokensRaw = tokenize(input);
-  if (!tokensRaw) return null;
-  const tokens = insertImplicitMultiplication(tokensRaw);
-  const rpn = toRPN(tokens);
-  if (!rpn) return null;
-  if (check) return '';
-  const value = evalRPN(rpn);
-  return String(value);
+  return evaluate(input, check);
 }
 
 </script>
@@ -410,8 +407,8 @@ function updateHighlight(update) {
 }
 
 function processInput(value, cursor, exact = false) {
-  if(null !== evaluate(value, true)) {
-    r = evaluate(value);
+  if(null !== evaluate_conversion(value, true)) {
+    r = evaluate_conversion(value);
     popupList.innerHTML = r;
     showPopup();
     return;
