@@ -363,8 +363,17 @@ function hidePopup() {
 
 function filterWithString(filter, search, exact=false, keys = ['alias', 'keyword', 'category']) {
   const f = filter.toLowerCase();
+  const site = f.startsWith('site:') ? f.slice(5) : f;
+
   filtered = [];
   for (const b of bangs) {
+    let url = b['url'];
+    let m = url.match(/https?:\/\/((?:[^\/]*\.)?(([^/\.]+)\.(?:[^/\.]+)))\//);
+    if (m && (m[1] == site || m[2] == site || site != f && m[3] == site)) {
+      filtered.push([b, b['keyword'], search]);
+      continue;
+    }
+    if (site != f) continue;
     for (const key of keys) {
       if ( exact ? b[key] == f : b[key] && b[key].startsWith(f)) {
         filtered.push([b, b[key], search]);
@@ -372,10 +381,11 @@ function filterWithString(filter, search, exact=false, keys = ['alias', 'keyword
       }
     }
   }
-  return filtered;
+  return filtered.length > 0 ? filtered : site != f && site.includes('.') ? [[{'name': site, 'url': 'https://' + site + '/?q=%s' }, null, search]] : [];
 }
 
-function renderPopup(filtered) {
+function renderPopup(filtered_new) {
+  filtered = filtered_new;
   popupList.innerHTML = '';
   if (filtered.length === 0) {
     const li = document.createElement('li');
@@ -390,7 +400,7 @@ function renderPopup(filtered) {
     const li = document.createElement('li');
     li.tabIndex = -1;
     li.dataset.index = i;
-    li.innerHTML = `<span><strong>${e[0].name}</strong></span><span style="opacity:.7">!${e[1]}</span>`;
+    li.innerHTML = `<span><strong>${e[0].name}</strong></span><span style="opacity:.7">${e[1] ? '!' + e[1]: ''}</span>`;
     li.addEventListener('click', () => { highlightIndex = i; updateHighlight(true); setTimeout(() => handleSearch()); });
     popupList.appendChild(li);
   }
@@ -420,7 +430,7 @@ function processInput(value, cursor, exact = false) {
     renderPopup(filterWithString(m[1].slice(1).toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), exact || m[2].length > 0));
     showPopup();
     positionPopup();
-  } else if ((m = /^([\w]+)( ?)/.exec(value)) && renderPopup(filterWithString(m[1].toLowerCase(), value.slice(m.index + m[0].length), exact || m[2].length > 0, ['keyword', 'category'])) ||
+  } else if ((m = /^([\w:\.]+)( ?)/.exec(value)) && renderPopup(filterWithString(m[1].toLowerCase(), value.slice(m.index + m[0].length), exact || m[2].length > 0, ['keyword', 'category'])) ||
              (m = /(?: )([\w]+)$/.exec(value)) && renderPopup(filterWithString(m[1].toLowerCase(), value.slice(0, m.index), exact, ['keyword', 'category']))
   ) {
     showPopup();
@@ -488,7 +498,6 @@ function renderSuggestions(rawQuery) {
     }
   }
   if (entries.length) {
-    filtered = entries;
     renderPopup(entries);
     showPopup();
     positionPopup();
