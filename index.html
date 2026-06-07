@@ -670,6 +670,8 @@ if (query.has('q')) {
   input.value = query.get('q');
   processInput(input.value, input.value.length, exact = true);
   if (filtered.length == 1) { setTimeout(() => handleSearch()); }
+} else {
+  setTimeout(() => { processInput(input.value, input.value.length); }, 0);
 }
 input.focus();
 
