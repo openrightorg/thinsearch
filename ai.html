@@ -167,8 +167,8 @@
         </div>
     </div>
 
-    <script type="module">
-        import { pipeline, TextStreamer, DynamicCache, InterruptableStoppingCriteria, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.1.0";
+    <script cors type="module">
+        import { pipeline, TextStreamer, DynamicCache, InterruptableStoppingCriteria, env } from "https://openright.org/static/transformers.min.js";
 
         // Markdown rendering logic from markdown-example.js
         const escapeHtml = (value) => value
