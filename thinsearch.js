@@ -1,0 +1,633 @@
+const bangsDefaults = [
+{"name":"Amazon","alias":"a","url":"https://www.amazon.com/s?k=%s"},{"name":"Ebay","alias":"e","url":"https://www.ebay.com/sch/i.html?_nkw=%s"},
+{"name":"DuckDuckGo AI","keyword":"ai","url":"https://duckduckgo.com/?q=%s&ia=chat&bang=true","category":"ai"},{"name":"Gemini","url":"https://www.google.com/search?udm=50&q=%s","category":"ai"},{"name":"ChatGPT","url":"https://chatgpt.com/?q=%s","category":"ai"},{"name":"Grok","url":"https://grok.com/?q=%s","category":"ai"},{"name":"Perplexity","url":"https://www.perplexity.ai/?q=%s"},
+{"keyword":"thinai","name":"Thin AI (experimental)","url":"ai.html?q=%s","category":"ai"},{"name":"Local AI","url":"http://localhost:8080/?q=%s","category":"ai"},
+{"name":"Huggingface","alias":"hf","url":"https://huggingface.co/models?search=%s"},
+{"name":"Bing","url":"https://www.bing.com/search?q=%s"},{"Name":"Brave","url":"https://safe.search.brave.com/search?q=%s"},{"alias":"ddg","name":"DuckDuckGo","url":"https://safe.duckduckgo.com/?q=%s","category":"search"},{"name":"Google","alias":"g","url":"https://www.google.com/search?q=%s","category":"search"},
+{"name":"DuckDuckGo images","keyword":"image","url":"https://safe.duckduckgo.com/?q=%s&ia=images&iax=images","category":"images"},{"name":"Brave images","keyword":"image","url":"https://safe.search.brave.com/images?q=%s","category":"images"},
+{"name":"Youtube","alias":"yt","url":"https://www.youtube.com/results?search_query=%s","category":"videos"},
+{"name":"Google Maps","url":"https://google.com/maps?q=%s","category":"maps"},{"name":"Bing Maps","url":"https://bing.com/maps?q=%s","category":"maps"},{"name":"Apple Maps","url":"https://maps.apple.com/?q=%s","category":"maps"},
+{"name":"Allrecipes","url":"https://www.allrecipes.com/search?q=%s","category":"food"},{"keyword":"archive","name":"Archive.org","url":"https://archive.org/search?query=%s"},{"name":"Betty Crocker","url":"https://www.bettycrocker.com/search?term=%s","category":"food"},{"name":"Food.com","keyword":"food","url":"https://www.food.com/search/%s","category":"food"},{"name":"Serious Eats","url":"https://www.seriouseats.com/search?q=%s"},{"name":"Simply Recipes","url":"https://www.simplyrecipes.com/search?q=%s"},
+{"keyword":"dictionary","alias":"d","name":"The Free Dictionary","url":"https://www.thefreedictionary.com/%s","category":"dictionary"},
+{"name":"Encyclopedia Britanica","keyword":"ebrit","url":"https://www.britannica.com/search?query=%s","category":"encyclopedia"},{"name":"Grokipedia","url":"https://grokipedia.com/search?q=%s","category":"encyclopedia"},{"name":"Wikipedia","alias":"w","url":"https://en.wikipedia.org/wiki/Special:Search?search=%s","category":"encyclopedia"},
+{"name":"thesaurus.com","keyword":"thesaurus","url":"https://www.thesaurus.com/browse/%s"},{"name":"Thingiverse","alias":"thing","url":"https://www.thingiverse.com/search?q=%s"},{"name":"Tubi","url":"https://tubitv.com/search/%s"},{"Name":"UPS","url":"https://www.ups.com/track?tracknum=%s"},
+{"name":"Github","alias":"git","url":"https://github.com/search?q=%s"},
+{"name":"pip","url":"https://pypi.org/search/?q=%s"},
+{"name":"GeeksForGeeks (python)","keyword":"python","url":"https://www.geeksforgeeks.org/search/?gq=python+%s"},{"name":"GeeksForGeeks (javascript)","keyword":"javascript","url":"https://www.geeksforgeeks.org/search/?gq=javascript+%s"},{"name":"GeeksForGeeks (typescript)","keyword":"typescript","url":"https://www.geeksforgeeks.org/search/?gq=typescript+%s"},
+{"name":"Stack Exchange","url":"https://stackexchange.com/search?q=%s"},{"name":"Stack Overflow","alias":"so","url":"https://stackoverflow.com/search?q=%s"},
+{"name":"LinkedIn","url":"https://www.linkedin.com/search/results/all/?keywords=%s"},{"name":"Reddit","url":"https://www.reddit.com/search?q=%s"},
+{"name":"Home Depot","url":"https://www.homedepot.com/s/%s"},
+{"name":"AllSides","url":"https://www.allsides.com/search/?q=%s"},
+{"keyword":"libby","url":"https://libbyapp.com/library/reads/search/query-%s/page-1"},
+{"name":"MakerWorld","url":"https://makerworld.com/en/search/models?keyword=%s"},{"name":"Printables","url":"https://www.printables.com/search/models?q=%d"},
+{"name":"Space.com","keyword":"space","url":"https://www.space.com/search?searchTerm=%s"},
+{"name":"USPS","url":"https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=%s"},
+{"name":"Wolfram","alias":"wa","url":"https://www.wolframalpha.com/input/?i=%s","category":"calculate"},
+{"keyword":"gtranslate","url":"https://translate.google.com/?sl=auto&tl=en&text=%s","category":"translate"},
+{"name":"Nasdaq","category":"stock","url":"https://www.nasdaq.com/market-activity/stocks/%s"}
+];
+
+const categoryMatchesJson = [["^find ",["search"]],["^how many ",["calculate"]],["^what is a ",["encyclopedia","ai"]],["^(?:what|when|why|where|do|how) ", ["ai"]],["\\b(?:recipe)\\b",["food"]],["^(?:[a-z][a-z]+$)",["encyclopedia","dictionary","search","ai"]], ["^(?:[a-z]{2,})",["search","ai","encyclopedia"]],[".",["search"]]];
+
+const units = {
+  // length (base: meter)
+  mm: { type: "length", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  cm: { type: "length", toBase: v => v / 100, fromBase: v => v * 100 },
+  m:  { type: "length", toBase: v => v, fromBase: v => v },
+  km: { type: "length", toBase: v => v * 1000, fromBase: v => v / 1000 },
+  in: { type: "length", toBase: v => v * 0.0254, fromBase: v => v / 0.0254 },
+  ft: { type: "length", toBase: v => v * 0.3048, fromBase: v => v / 0.3048 },
+  yd: { type: "length", toBase: v => v * 0.9144, fromBase: v => v / 0.9144 },
+  mi: { type: "length", toBase: v => v * 1609.344, fromBase: v => v / 1609.344 },
+  // mass (base: kilogram)
+  g:  { type: "mass", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  kg: { type: "mass", toBase: v => v, fromBase: v => v },
+  oz: { type: "mass", toBase: v => v * 0.028349523125, fromBase: v => v / 0.028349523125 },
+  lb: { type: "mass", toBase: v => v * 0.45359237, fromBase: v => v / 0.45359237 },
+  // volume (base: liter)
+  ml: { type: "volume", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  l:  { type: "volume", toBase: v => v, fromBase: v => v },
+  tsp: { type: "volume", toBase: v => v * 0.00492892159375, fromBase: v => v / 0.00492892159375 },
+  tbsp:{ type: "volume", toBase: v => v * 0.01478676478125, fromBase: v => v / 0.01478676478125 },
+  floz:{ type: "volume", toBase: v => v * 0.0295735295625, fromBase: v => v / 0.0295735295625 },
+  cup:{ type: "volume", toBase: v => v * 0.2365882365, fromBase: v => v / 0.2365882365 },
+  pt: { type: "volume", toBase: v => v * 0.473176473, fromBase: v => v / 0.473176473 },
+  qt: { type: "volume", toBase: v => v * 0.946352946, fromBase: v => v / 0.946352946 },
+  gal:{ type: "volume", toBase: v => v * 3.785411784, fromBase: v => v / 3.785411784 },
+  // time (base: second)
+  ms: { type: "time", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  s:  { type: "time", toBase: v => v, fromBase: v => v },
+  min:{ type: "time", toBase: v => v * 60, fromBase: v => v / 60 },
+  h:  { type: "time", toBase: v => v * 3600, fromBase: v => v / 3600 },
+  d:  { type: "time", toBase: v => v * 86400, fromBase: v => v / 86400 },
+  // temperature (base: celsius)
+  c:  { type: "temp", toBase: v => v, fromBase: v => v },
+  f:  { type: "temp", toBase: v => (v - 32) * 5/9, fromBase: v => (v * 9/5) + 32 },
+  k:  { type: "temp", toBase: v => v - 273.15, fromBase: v => v + 273.15 }
+};
+
+const unitAliases = {
+  millimeter: "mm", millimeters: "mm", millimetre: "mm", millimetres: "mm",
+  centimeter: "cm", centimeters: "cm", centimetre: "cm", centimetres: "cm",
+  meter: "m", meters: "m", metre: "m", metres: "m",
+  kilometer: "km", kilometers: "km", kilometre: "km", kilometres: "km",
+  inch: "in", inches: "in",
+  foot: "ft", feet: "ft",
+  yard: "yd", yards: "yd",
+  mile: "mi", miles: "mi",
+  gram: "g", grams: "g",
+  kilogram: "kg", kilograms: "kg",
+  ounce: "oz", ounces: "oz",
+  pound: "lb", pounds: "lb", lbs: "lb",
+  milliliter: "ml", milliliters: "ml", millilitre: "ml", millilitres: "ml",
+  liter: "l", liters: "l", litre: "l", litres: "l",
+  teaspoon: "tsp", teaspoons: "tsp",
+  tablespoon: "tbsp", tablespoons: "tbsp",
+  "fl_oz": "floz", "fl_oz.": "floz", "fl_ozs": "floz", "fl_ozs.": "floz",
+  "fl-oz": "floz", "fl-ozs": "floz",
+  "fluidounce": "floz", "fluidounces": "floz",
+  cup: "cup", cups: "cup",
+  pint: "pt", pints: "pt",
+  quart: "qt", quarts: "qt",
+  gallon: "gal", gallons: "gal",
+  millisecond: "ms", milliseconds: "ms",
+  second: "s", seconds: "s",
+  minute: "min", minutes: "min",
+  hour: "h", hours: "h",
+  day: "d", days: "d",
+  celsius: "c", fahrenheit: "f", kelvin: "k"
+};
+
+function canonicalUnit(u) {
+  return unitAliases[u] || u;
+}
+
+function tryConvert(input, check = false) {
+  const m = input.trim().toLowerCase()
+    .match(/^([+-]?(?:\d+\.?\d*|\.\d+|\d+ +\d+\/\d+|\d+\/\d+))\s*([a-z]+)\s*(to|in)\s*([a-z]+)$/i);
+  if (!m) return null;
+
+  const valueStr = m[1];
+  const unitFrom = canonicalUnit(m[2]);
+  const unitTo = canonicalUnit(m[4]);
+
+  if (!units[unitFrom] || !units[unitTo]) return null;
+  if (units[unitFrom].type !== units[unitTo].type) return null;
+
+  const value = valueStr.includes('/') ? evaluate(valueStr) : Number(valueStr);
+  if (!Number.isFinite(value)) return Infinity;
+
+  if (check) return {};
+
+  const base = units[unitFrom].toBase(value);
+  const out = units[unitTo].fromBase(base);
+  return { value: out, unit: unitTo };
+}
+
+function tokenize(expr) {
+  const out = [];
+  const re = /\s*([0-9]*\.?[0-9]+|\*\*|[()+\-*/^])\s*/g;
+  let m;
+  let idx = 0;
+  while ((m = re.exec(expr)) !== null) {
+    if (m.index !== idx) return null;
+    out.push(m[1]);
+    idx = re.lastIndex;
+  }
+  if (idx !== expr.length) return null;
+  return out;
+}
+
+function isNumberToken(t) {
+  return !isNaN(t);
+}
+
+function insertImplicitMultiplication(tokens) {
+  const out = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const prev = out[out.length - 1];
+    if (prev !== undefined) {
+      const prevIsNum = isNumberToken(prev);
+      const currIsNum = isNumberToken(t);
+      if ((prevIsNum || prev === ")") && t === "(") {
+        out.push("*");
+      } else if (prev === ")" && currIsNum) {
+        out.push("*");
+      } else if (prevIsNum && currIsNum) {
+        out.push("+");
+      }
+    }
+    out.push(t);
+  }
+  return out;
+}
+
+function toRPN(tokens) {
+  const output = [];
+  const ops = [];
+  const prec = { "+": 1, "-": 1, "*": 2, "/": 2, "^": 3, "**": 3 };
+  const rightAssoc = { "^": true, "**": true };
+  let lastIsOperand = false;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (!isNaN(t)) {
+      output.push(t);
+      lastIsOperand = true;
+      continue;
+    }
+    if (t === "(" ) { ops.push(t); lastIsOperand = false; continue; }
+    if (t === ")") {
+      if (!lastIsOperand) return null;
+      while (ops.length && ops[ops.length - 1] !== "(") output.push(ops.pop());
+      if (!ops.length) return null;
+      ops.pop();
+      lastIsOperand = true;
+      continue;
+    }
+
+    if ("+-*/^".includes(t) || t === "**") {
+      // unary minus
+      if (!lastIsOperand) {
+        if (t === "-") output.push("0");
+        else return null;
+      }
+      while (ops.length) {
+        const top = ops[ops.length - 1];
+        if (!(top in prec)) break;
+        if ((rightAssoc[t] && prec[t] < prec[top]) || (!rightAssoc[t] && prec[t] <= prec[top])) {
+          output.push(ops.pop());
+        } else break;
+      }
+      ops.push(t);
+      lastIsOperand = false;
+      continue;
+    }
+    return null;
+  }
+
+  if (!lastIsOperand) return null;
+
+  while (ops.length) {
+    const op = ops.pop();
+    if (op === "(" || op === ")") return null;
+    output.push(op);
+  }
+  return output;
+}
+
+function evalRPN(rpn) {
+  const stack = [];
+  for (const t of rpn) {
+    if (!isNaN(t)) { stack.push(Number(t)); continue; }
+    const b = stack.pop();
+    const a = stack.pop();
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return Infinity;
+    let v;
+    switch (t) {
+      case "+": v = a + b; break;
+      case "-": v = a - b; break;
+      case "*": v = a * b; break;
+      case "/": v = a / b; break;
+      case "^": v = Math.pow(a, b); break;
+      case "**": v = Math.pow(a, b); break;
+      default: return null;
+    }
+    stack.push(v);
+  }
+  if (stack.length !== 1) return null;
+  return stack[0];
+}
+
+function evaluate(input, check = false) {
+  const tokensRaw = tokenize(input);
+  if (!tokensRaw) return null;
+  const tokens = insertImplicitMultiplication(tokensRaw);
+  const rpn = toRPN(tokens);
+  if (!rpn) return null;
+  if (check) return '';
+  const value = evalRPN(rpn);
+  return value;
+}
+
+function evaluate_conversion(input, check = false) {
+  if(!input || input.length == 0) return null;
+  const conv = tryConvert(input, check);
+  if (conv) {
+    if (conv === null || conv === undefined) return null;
+    if (check) return '';
+    return `${conv.value} ${conv.unit}`;
+  }
+
+  return evaluate(input, check);
+}
+
+var bangsJson = bangsDefaults;
+// Override with user custom bangs from localStorage if present
+const storedBangJson = localStorage.getItem('bangs');
+if (storedBangJson) {
+  try {
+    const userBangs = JSON.parse(storedBangJson);
+    if (Array.isArray(userBangs)) {
+      bangsJson = mergeOverrides(bangsDefaults, userBangs);
+    }
+  } catch (e) {
+    console.warn('Failed to parse stored bangs', e);
+  }
+}
+
+function mergeOverrides(A = [], B = []) {
+  const key = i => `${i.name ?? ''}|i.keyword || ((i.name ?? '').toLowerCase().replaceAll(' ', ''))}`;
+  const map = new Map();
+
+  for (const it of A) map.set(key(it), { ...it });
+  for (const it of B) map.set(key(it), { ...it });
+
+  return Array.from(map.values());
+}
+
+function capitalizeName(name) {
+  return name && name.length ? String(name[0]).toUpperCase() + String(name).slice(1).toLowerCase() : "";
+}
+
+function extractSiteName(url) {
+  var name;
+  try {
+    const u = new URL(url);
+    const parts = u.hostname.split('.');
+    name = parts.length > 1 ? parts[-2] : u.hostname;
+  } catch (e) {
+    name = url;
+  }
+  return capitalizeName(name);
+}
+
+const bangs = bangsJson.map(e => {
+  const name = e.name || extractSiteName(e.url);
+  const keyword = e.keyword || name.toLowerCase().replaceAll(' ', '');
+  const alias = e.alias || keyword;
+  return { alias: alias, keyword: keyword, url: e.url, name: name, category: e.category };
+});
+
+const bangIndex = Object.fromEntries(bangs.flatMap(e => {
+  entries = [[ e.keyword, e ]];
+  if (e.alias != e.keyword) { entries.push([ e.alias, e ]); }
+  return entries;
+}));
+
+function buildUrl(template, q) {
+  const encoded = encodeURIComponent(q);
+  return template.includes('%s') ? template.replace('%s', encoded) : template;
+}
+
+const input = document.getElementById('q');
+const popup = document.getElementById('popup');
+const popupList = document.getElementById('popupList');
+let visible = false;
+let filtered = [];
+let highlightIndex = 0;
+
+function showPopup() {
+  popup.classList.remove('hidden');
+  visible = true;
+}
+
+function hidePopup() {
+  popup.classList.add('hidden');
+  visible = false;
+  highlightIndex = -1;
+  filtered = [];
+}
+
+function filterWithString(filter, search, exact=false, keys = ['alias', 'keyword', 'category']) {
+  const f = filter.toLowerCase();
+  const site = f.startsWith('site:') ? f.slice(5) : f;
+
+  filtered = [];
+  for (const b of bangs) {
+    let url = b['url'];
+    let m = url.match(/https?:\/\/((?:[^\/]*\.)?(([^/\.]+)\.(?:[^/\.]+)))\//);
+    if (m && (m[1] == site || m[2] == site || site != f && m[3] == site)) {
+      filtered.push([b, b['keyword'], search]);
+      continue;
+    }
+    if (site != f) continue;
+    for (const key of keys) {
+      if ( exact ? b[key] == f : b[key] && b[key].startsWith(f)) {
+        filtered.push([b, b[key], search]);
+        break;
+      }
+    }
+  }
+  return filtered.length > 0 ? filtered : site != f && site.includes('.') ? [[{'name': site, 'url': 'https://' + site + '/?q=%s' }, null, search]] : [];
+}
+
+function renderPopup(filtered_new) {
+  filtered = filtered_new;
+  popupList.innerHTML = '';
+  if (filtered.length === 0) {
+    const li = document.createElement('li');
+    li.textContent = 'No bangs match';
+    li.className = 'no-match';
+    popupList.appendChild(li);
+    highlightIndex = -1;
+    return false;
+  }
+  highlightIndex = 0;
+  for (const [i, e] of filtered.entries()) {
+    const li = document.createElement('li');
+    li.tabIndex = -1;
+    li.dataset.index = i;
+    li.innerHTML = `<span><strong>${e[0].name}</strong></span><span style="opacity:.7">${e[1] ? '!' + e[1]: ''}</span>`;
+    li.addEventListener('click', () => { highlightIndex = i; updateHighlight(true); setTimeout(() => handleSearch()); });
+    popupList.appendChild(li);
+  }
+  updateHighlight(false);
+  return true;
+}
+
+function updateHighlight(update) {
+  Array.from(popupList.children).forEach((li, i) => {
+    li.classList.toggle('highlight', i === highlightIndex);
+    if(i === highlightIndex) li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  return false;
+}
+
+function processInput(value, cursor, exact = false) {
+  if(null !== evaluate_conversion(value, true)) {
+    r = evaluate_conversion(value);
+    popupList.innerHTML = r;
+    showPopup();
+    return;
+  }
+
+  const before = value.slice(0, cursor);
+  let m;
+  if ((m = /(?<=^|\s)(![\w-]*)( ?)/.exec(before))) {
+    renderPopup(filterWithString(m[1].slice(1).toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), exact || m[2].length > 0));
+    showPopup();
+    positionPopup();
+  } else if ((m = /^([\w:\.]+)( ?)/.exec(value)) && renderPopup(filterWithString(m[1].toLowerCase(), value.slice(m.index + m[0].length), exact || m[2].length > 0, ['keyword', 'category'])) ||
+             (m = /(?: )([\w]+)$/.exec(value)) && renderPopup(filterWithString(m[1].toLowerCase(), value.slice(0, m.index), exact, ['keyword', 'category']))
+  ) {
+    showPopup();
+    positionPopup();
+  } else {
+    renderSuggestions(input.value);
+  }
+}
+
+input.addEventListener('input', (e) => {
+  processInput(input.value, input.selectionStart);
+});
+
+input.addEventListener('keydown', (e) => {
+  if (!visible) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (filtered.length) { highlightIndex = Math.min(filtered.length-1, highlightIndex+1); updateHighlight(true); } }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if (filtered.length) { highlightIndex = Math.max(0, highlightIndex-1); updateHighlight(true); } }
+  else if (e.key === 'Enter') {
+    if (filtered.length > 0) {
+      e.preventDefault();
+      setTimeout(() => handleSearch());
+    }
+  } else if (e.key === 'Escape') {
+    hidePopup();
+  }
+});
+
+function positionPopup() {
+  const rect = input.getBoundingClientRect();
+  popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+  popup.style.left = (rect.left + window.scrollX) + 'px';
+  popup.style.width = rect.width + 'px';
+}
+
+function handleSearch(e) {
+  if (e) e.preventDefault();
+  const raw = input.value.trim();
+  if (!raw) return false;
+
+  if (filtered.length > 0) {
+    let [ entry, key, q ] = filtered[highlightIndex >= 0 && highlightIndex < filtered.length ? highlightIndex : 0];
+    const url = entry.url;
+    const hasPlaceholder = url.includes('%s');
+    const target = hasPlaceholder ? buildUrl(url, q) : url;
+    window.location.href = target;
+    return false;
+  }
+
+  processInput(input.value, input.value.length);
+  return false;
+}
+
+function renderSuggestions(rawQuery) {
+  let categories = [];
+  for(const c of categoryMatchesJson) {
+    if (new RegExp(c[0], 'i').exec(rawQuery)) {
+      categories = c[1];
+      break;
+    }
+  }
+  let entries = [];
+  for (const c of categories) {
+    for (const b of bangs.filter(e => e.category == c)) {
+      entries.push([b, c, rawQuery]);
+    }
+  }
+  if (entries.length) {
+    renderPopup(entries);
+    showPopup();
+    positionPopup();
+  } else {
+    hidePopup();
+  }
+}
+
+// Settings page to edit bangs
+function showSettingsPage(bangs) {
+  document.body.innerHTML = '';
+  const form = document.createElement('form');
+  form.id = 'bangsForm';
+  const table = document.createElement('table');
+  const header = document.createElement('tr');
+  ['Name','URL','Keyword','Alias','Category'].forEach(text=>{
+    const th = document.createElement('th'); th.textContent = text; header.appendChild(th);
+  });
+  table.appendChild(header);
+  bangs.forEach((b,i)=>{
+    const row = document.createElement('tr');
+    const default_name = extractSiteName(b.url);
+    const default_keyword = (b.name || default_name).toLowerCase().replaceAll(' ', '');
+    if(b.alias == b.keyword || b.alias == default_keyword) { b.alias = ''; }
+    if(b.keyword == default_keyword || !b.keyword) { b['keyword-default'] = default_keyword; b.keyword = ''; }
+    if(b.name == default_name || !b.name) { b['name-default'] = default_name; b.name = ''; }
+    ['name', 'url','keyword','alias','category'].forEach(field=>{
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.name = field;
+      input.value = b[field] || '';
+      if (b[field + '-default']) input.placeholder = b[field + '-default'];
+      input.dataset.index = i;
+      td.appendChild(input);
+      row.appendChild(td);
+    });
+    const del = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Delete';
+    btn.onclick = () => { table.removeChild(row); };
+    del.appendChild(btn);
+    row.appendChild(del);
+    table.appendChild(row);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = 'Add Bang';
+  addBtn.onclick = () => {
+    const row = document.createElement('tr');
+    ['keyword','alias','name','url','category'].forEach(field=>{
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.name = field;
+      td.appendChild(input);
+      row.appendChild(td);
+    });
+    const del = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Delete';
+    btn.onclick = () => { table.removeChild(row); };
+    del.appendChild(btn);
+    row.appendChild(del);
+    table.appendChild(row);
+  };
+  form.appendChild(table);
+  form.appendChild(addBtn);
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = 'Save';
+  saveBtn.onclick = () => {
+    const newBangs = [];
+    Array.from(table.querySelectorAll('tr')).slice(1).forEach(tr=>{
+      const obj = {};
+      tr.querySelectorAll('input').forEach(inp=>{ if(inp.value.length) obj[inp.name] = inp.value; });
+      if (obj.keyword) newBangs.push(obj);
+    });
+    localStorage.setItem('bangs', JSON.stringify(newBangs));
+    location.href = location.pathname;
+  };
+  form.appendChild(saveBtn);
+  // Export button: download current bangs as JSON
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.textContent = 'Export JSON';
+  exportBtn.onclick = () => {
+    // Use stored bangs if present, otherwise fall back to default bangs
+    const stored = localStorage.getItem('bangs');
+    const data = stored ? stored : JSON.stringify(bangsJson, null, 2);
+    const blob = new Blob([data], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bangs.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  form.appendChild(exportBtn);
+  // Import button: load bangs from a JSON file
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.textContent = 'Import JSON';
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json';
+  fileInput.style.display = 'none';
+  fileInput.onchange = () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target.result;
+        const json = JSON.parse(data);
+        if (!Array.isArray(json)) {
+          alert('JSON must be an array of bangs');
+          return;
+        }
+        localStorage.setItem('bangs', JSON.stringify(json));
+        location.href = location.pathname;
+      } catch (err) {
+        alert('Failed to parse JSON');
+      }
+    };
+    reader.readAsText(file);
+  };
+  importBtn.onclick = () => fileInput.click();
+  form.appendChild(importBtn);
+  form.appendChild(fileInput);
+  document.body.appendChild(form);
+}
+
+/* Reposition popup on resize/scroll */
+window.addEventListener('resize', () => { if (visible) positionPopup(); });
+window.addEventListener('scroll', () => { if (visible) positionPopup(); });
+
+const query = new URLSearchParams(window.location.search);
+
+if (query.has('q')) {
+  input.value = query.get('q');
+  processInput(input.value, input.value.length, exact = true);
+  if (filtered.length == 1) { setTimeout(() => handleSearch()); }
+} else {
+  setTimeout(() => { processInput(input.value, input.value.length); }, 0);
+}
+input.focus();
+
+// If settings requested, show settings page and stop further script
+if (query.has('settings')) {
+  showSettingsPage(bangsJson);
+}
